@@ -88,7 +88,7 @@ CREATE_DOMAINS=$(ls -lht /home/${FILE_NAME}/va/ | awk '{print $9}' | sed -r '/^\
 
 
 MAIN_DOMAIN=$(grep -ir "main_domain" /home/${FILE_NAME}/userdata/main | cut -d":" -f2 | tr -d " ")
-cp /home/${FILE_NAME}/homedir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public/
+cp -R /home/${FILE_NAME}/homedir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public/
 chown -R nginx:nginx /home/nginx/domains/$MAIN_DOMAIN/*
 chmod 2750 /home/nginx/domains/$MAIN_DOMAIN
 
