@@ -237,6 +237,7 @@ EOF
                                 x=$((x + 1))
                         done
         done < /home/${FILE_NAME}/sds2.bak
+nprestart
 }
 
 case $1 in
