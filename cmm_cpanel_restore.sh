@@ -2,7 +2,7 @@
 
 # Cpanel Backup Restore Script for CentMinMod Installer [CMM]
 
-# Scripted by Brijendra Sial @ Bullten Web Hosting Solutions [https://www.bullten.com]
+# Scripted by Brijendra Sial @ Bullten Web Hosting Solutions [https://www.bullte                                                                                                                                                             n.com]
 
 RED='\033[01;31m'
 RESET='\033[0m'
@@ -12,23 +12,23 @@ WHITE='\e[97m'
 BLINK='\e[5m'
 
 #set -e
-set -x
+#set -x
 
 echo " "
-echo -e "$GREEN*******************************************************************************$RESET"
+echo -e "$GREEN*****************************************************************                                                                                                                                                             **************$RESET"
 echo " "
-echo -e $YELLOW"Cpanel Backup Restore Script for CentMinMod Installer [CMM]$RESET"
+echo -e $YELLOW"Cpanel Backup Restore Script for CentMinMod Installer [CMM]$RESE                                                                                                                                                             T"
 echo " "
-echo -e $YELLOW"By Brijendra Sial @ Bullten Web Hosting Solutions [https://www.bullten.com]"$RESET
+echo -e $YELLOW"By Brijendra Sial @ Bullten Web Hosting Solutions [https://www.b                                                                                                                                                             ullten.com]"$RESET
 echo " "
-echo -e $YELLOW"Web Hosting Company Specialized in Providing Managed VPS and Dedicated Server's"$RESET
+echo -e $YELLOW"Web Hosting Company Specialized in Providing Managed VPS and Ded                                                                                                                                                             icated Server's"$RESET
 echo " "
-echo -e "$GREEN*******************************************************************************$RESET"
+echo -e "$GREEN*****************************************************************                                                                                                                                                             **************$RESET"
 
 echo " "
 
 
-ROOT_PASSWORD=$(cat /root/.my.cnf | grep password | cut -d' ' -f1 | cut -d'=' -f2)
+ROOT_PASSWORD=$(cat /root/.my.cnf | grep password | cut -d' ' -f1 | cut -d'=' -f                                                                                                                                                             2)
 
 
 function restore_cpanel_database
@@ -37,58 +37,59 @@ echo " "
 echo -e $GREEN"Restoring All Databases"$RESET
 echo " "
 
-DATABASE_CREATE=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' | sed -r '/^\s*$/d' | grep .create$)
+DATABASE_CREATE_RESTORE=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' |                                                                                                                                                              sed -r '/^\s*$/d' | grep .create$)
+                        for db in ${DATABASE_CREATE_RESTORE}; do
+                        DBCR=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $                                                                                                                                                             9}' | sed -r '/^\s*$/d' | grep .create$ | wc -l)
+                                for ((x=1; x<=$DBCR; x++)); do
 
-                        for db in ${DATABASE_CREATE}; do
-                        DBC=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' | sed -r '/^\s*$/d' | grep .create$ | wc -l)
-                                for ((x=1; x<=$DBC; x++)); do
-                                        /usr/bin/mysql -u root --password=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db
-                                        x=$((x + 1))
-                                        echo -e $GREEN"Database Created $db"$RESET
-                                        echo " "
+                                        RESULT=$(mysql -u root --password=$ROOT_                                                                                                                                                             PASSWORD -e "SHOW DATABASES" | grep ${db%.*})
+                                        if [ "$RESULT" == "${db%.*}" ]; then
+                                                echo " "
+                                                echo -e $RED"Database Already Ex                                                                                                                                                             ist. Restore of database ${db%.*}.sql Failed"$RESET
+                                                echo " "
+                                        else
+                                                echo " "
+                                                echo -e $YELLOW"Database does no                                                                                                                                                             t exist"$RESET
+                                                echo " "
+                                                /usr/bin/mysql -u root --passwor                                                                                                                                                             d=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db
+                                                /usr/bin/mysql -u root --passwor                                                                                                                                                             d=$ROOT_PASSWORD ${db%.*} < /home/${FILE_NAME}/mysql/${db%.*}.sql
+                                                echo -e $GREEN"Database Created                                                                                                                                                              ${db%.*}.sql"$RESET
+                                                echo " "
+                                        fi
+
+                                                x=$((x + 1))
                                 done
                         done
-
-DATABASE_RESTORE=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' | sed -r '/^\s*$/d' | grep .sql$)
-
-                        for db in ${DATABASE_RESTORE}; do
-                        DBR=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' | sed -r '/^\s*$/d' | grep .sql$ | wc -l)
-                                for ((x=1; x<=$DBR; x++)); do
-                                        /usr/bin/mysql -u root --password=$ROOT_PASSWORD ${db%.*}< /home/${FILE_NAME}/mysql/$db
-                                        x=$((x + 1))
-                                        echo -e $GREEN"Database Restored $db"$RESET
-                                        echo " "
-                                done
-                        done
-
+restore_cpanel_main_domain
 }
 
-function restore_cpanel_files
+function restore_cpanel_main_domain
 {
+MAIN_DOMAIN=$(grep -ir "main_domain" /home/${FILE_NAME}/userdata/main | cut -d":                                                                                                                                                             " -f2 | tr -d " ")
+
 echo " "
-echo -e $GREEN"Restoring All Files"$RESET
+echo -e $GREEN"Restoring File for Main Domain $MAIN_DOMAIN"$RESET
 echo " "
 
-CREATE_DOMAINS=$(ls -lht /home/${FILE_NAME}/va/ | awk '{print $9}' | sed -r '/^\s*$/d')
+mkdir -p /home/nginx/domains/${MAIN_DOMAIN}
+mkdir -p /home/nginx/domains/${MAIN_DOMAIN}/backup
+mkdir -p /home/nginx/domains/${MAIN_DOMAIN}/log
+mkdir -p /home/nginx/domains/${MAIN_DOMAIN}/private
+mkdir -p /home/nginx/domains/${MAIN_DOMAIN}/public
 
-                        for db in ${CREATE_DOMAINS}; do
-                        CRD=$(ls -lht /home/${FILE_NAME}/va/ | awk '{print $9}' | sed -r '/^\s*$/d' | wc -l)
-                               for ((x=1; x<=$CRD; x++)); do
-                                        mkdir -p /home/nginx/domains/$db
-                                        mkdir -p /home/nginx/domains/$db/backup
-                                        mkdir -p /home/nginx/domains/$db/log
-                                        mkdir -p /home/nginx/domains/$db/private
-                                        mkdir -p /home/nginx/domains/$db/public
-                                        chown -R nginx:nginx /home/nginx/domains/$db
-                                       x=$((x + 1))
-                                       echo -e $GREEN"Domain Created $db"$RESET
+SUB_DOMAINS_PATH=$(cat /home/${FILE_NAME}/sds2 | cut -d"=" -f2 | cut -d"/" -f2)
+
+
+                        for db in ${SUB_DOMAINS_PATH}; do
+                        SDC=$(cat /home/${FILE_NAME}/sds2 | cut -d"=" -f2 | cut                                                                                                                                                              -d"/" -f2 | wc -l)
+                                for ((x=1; x<=$SDC; x++)); do
+                                        echo "$db" >> /home/${FILE_NAME}/sds2_ex                                                                                                                                                             clude
+                                        x=$((x + 1))
                                         echo " "
                                 done
                         done
 
-
-MAIN_DOMAIN=$(grep -ir "main_domain" /home/${FILE_NAME}/userdata/main | cut -d":" -f2 | tr -d " ")
-cp -R /home/${FILE_NAME}/homedir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public/
+rsync -r --exclude-from="/home/${FILE_NAME}/sds2_exclude" /home/${FILE_NAME}/hom                                                                                                                                                             edir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public
 chown -R nginx:nginx /home/nginx/domains/$MAIN_DOMAIN/*
 chmod 2750 /home/nginx/domains/$MAIN_DOMAIN
 
@@ -120,7 +121,7 @@ server {
   # limit_conn limit_per_ip 16;
   # ssi  on;
 
-  access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k flush=5m;
+  access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k fl                                                                                                                                                             ush=5m;
   error_log /home/nginx/domains/demo.com/log/error.log;
 
   root /home/nginx/domains/demo.com/public;
@@ -148,11 +149,95 @@ server {
   include /usr/local/nginx/conf/vts_server.conf;
 }
 EOF
-sed -i "s/demo.com/$MAIN_DOMAIN/g" /usr/local/nginx/conf/conf.d/${MAIN_DOMAIN}.conf
+sed -i "s/demo.com/$MAIN_DOMAIN/g" /usr/local/nginx/conf/conf.d/${MAIN_DOMAIN}.c                                                                                                                                                             onf
 nprestart
+restore_cpanel_subdomain
 }
 
+function restore_cpanel_subdomain
+{
+echo " "
+echo -e $GREEN"Restoring Subdomains If Exist"$RESET
+echo " "
+cp /home/${FILE_NAME}/sds /home/${FILE_NAME}/sds.bak
+cp /home/${FILE_NAME}/sds2 /home/${FILE_NAME}/sds2.bak
+sed -i 's/_/./g' /home/${FILE_NAME}/sds.bak
+sed -i 's/public_html/public@html/g; s/_/./g; s/=/ /g; s/public@html/public_html                                                                                                                                                             /g' /home/${FILE_NAME}/sds2.bak
 
+LIC=$(cat /home/${FILE_NAME}/sds2.bak | wc -l)
+        while read line; do
+                        for ((x=1; x<=$LIC; x++)); do
+                                DOMAIN_NAMES=$(echo $line | awk '{print $1}')
+                                DOMAIN_PATH=$(echo $line | awk '{print $2}')
+                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES
+                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/backu                                                                                                                                                             p
+                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/log
+                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/priva                                                                                                                                                             te
+                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/publi                                                                                                                                                             c
+                                chown -R nginx:nginx /home/nginx/domains/$DOMAIN                                                                                                                                                             _NAMES
+                                rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PAT                                                                                                                                                             H}/* /home/nginx/domains/$DOMAIN_NAMES/public
+cat > /usr/local/nginx/conf/conf.d/$DOMAIN_NAMES.conf <<"EOF"
+# Centmin Mod Getting Started Guide
+# must read http://centminmod.com/getstarted.html
+
+# redirect from non-www to www
+# uncomment, save file and restart Nginx to enable
+# if unsure use return 302 before using return 301
+#server {
+#            listen   80;
+#            server_name demo.com;
+#            return 301 $scheme://www.demo.com$request_uri;
+#       }
+
+server {
+  server_name demo.com www.demo.com;
+
+# ngx_pagespeed & ngx_pagespeed handler
+#include /usr/local/nginx/conf/pagespeed.conf;
+#include /usr/local/nginx/conf/pagespeedhandler.conf;
+#include /usr/local/nginx/conf/pagespeedstatslog.conf;
+
+  #add_header X-Frame-Options SAMEORIGIN;
+  #add_header X-Xss-Protection "1; mode=block" always;
+  #add_header X-Content-Type-Options "nosniff" always;
+
+  # limit_conn limit_per_ip 16;
+  # ssi  on;
+
+  access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k fl                                                                                                                                                             ush=5m;
+  error_log /home/nginx/domains/demo.com/log/error.log;
+
+  root /home/nginx/domains/demo.com/public;
+
+  location / {
+
+# block common exploits, sql injections etc
+#include /usr/local/nginx/conf/block.conf;
+
+  # Enables directory listings when index file not found
+  #autoindex  on;
+
+  # Shows file listing times as local time
+  #autoindex_localtime on;
+
+  # Wordpress Permalinks example
+  #try_files $uri $uri/ /index.php?q=$uri&$args;
+
+  }
+
+  include /usr/local/nginx/conf/staticfiles.conf;
+  include /usr/local/nginx/conf/php.conf;
+  #include /usr/local/nginx/conf/drop.conf;
+  #include /usr/local/nginx/conf/errorpage.conf;
+  include /usr/local/nginx/conf/vts_server.conf;
+}
+EOF
+                                sed -i "s/demo.com/$DOMAIN_NAMES/g" /usr/local/n                                                                                                                                                             ginx/conf/conf.d/${DOMAIN_NAMES}.conf
+
+                                x=$((x + 1))
+                        done
+        done < /home/${FILE_NAME}/sds2.bak
+}
 
 case $1 in
         -c )
@@ -164,13 +249,25 @@ case $1 in
                         echo " "
                         echo -e $GREEN"Extracting Backup File $2"$RESET
                         echo " "
-                        tar -zxvf $2 -C /home/
+
+                        tar -zxvf $2 -C /home/ 2>&1 |
+
+                        while read extraction; do
+                                ext=$((ext+1))
+                                echo -en "wait... $ext files extracted\r"
+                        done
+
+                        echo " "
+                        echo " "
+                        echo -e $GREEN"Restoring Mysql User and Password"$RESET
+                        sleep 2
+
                         FILE_NAME=${2%.*.*}
-                        sed '/localhost/!d' /home/${FILE_NAME}/mysql.sql >> /home/${FILE_NAME}/mysql_update.sql
-                        mysql -u root --password=$ROOT_PASSWORD mysql < /home/${FILE_NAME}/mysql_update.sql
+                        sed '/localhost/!d' /home/${FILE_NAME}/mysql.sql >> /hom                                                                                                                                                             e/${FILE_NAME}/mysql_update.sql
+                        mysql -u root --password=$ROOT_PASSWORD mysql < /home/${                                                                                                                                                             FILE_NAME}/mysql_update.sql
                         rm -rf /home/${FILE_NAME}/mysql_update.sql
+
                         restore_cpanel_database
-                        restore_cpanel_files
 
         ;;
 esac
