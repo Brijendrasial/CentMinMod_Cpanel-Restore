@@ -2,7 +2,7 @@
 
 # Cpanel Backup Restore Script for CentMinMod Installer [CMM]
 
-# Scripted by Brijendra Sial @ Bullten Web Hosting Solutions [https://www.bullte                                                                                                                                                             n.com]
+# Scripted by Brijendra Sial @ Bullten Web Hosting Solutions [https://www.bullten.com]
 
 RED='\033[01;31m'
 RESET='\033[0m'
@@ -15,20 +15,20 @@ BLINK='\e[5m'
 #set -x
 
 echo " "
-echo -e "$GREEN*****************************************************************                                                                                                                                                             **************$RESET"
+echo -e "$GREEN*******************************************************************************$RESET"
 echo " "
-echo -e $YELLOW"Cpanel Backup Restore Script for CentMinMod Installer [CMM]$RESE                                                                                                                                                             T"
+echo -e $YELLOW"Cpanel Backup Restore Script for CentMinMod Installer [CMM]$RESET"
 echo " "
-echo -e $YELLOW"By Brijendra Sial @ Bullten Web Hosting Solutions [https://www.b                                                                                                                                                             ullten.com]"$RESET
+echo -e $YELLOW"By Brijendra Sial @ Bullten Web Hosting Solutions [https://www.bullten.com]"$RESET
 echo " "
-echo -e $YELLOW"Web Hosting Company Specialized in Providing Managed VPS and Ded                                                                                                                                                             icated Server's"$RESET
+echo -e $YELLOW"Web Hosting Company Specialized in Providing Managed VPS and Dedicated Server's"$RESET
 echo " "
-echo -e "$GREEN*****************************************************************                                                                                                                                                             **************$RESET"
+echo -e "$GREEN*******************************************************************************$RESET"
 
 echo " "
 
 
-ROOT_PASSWORD=$(cat /root/.my.cnf | grep password | cut -d' ' -f1 | cut -d'=' -f                                                                                                                                                             2)
+ROOT_PASSWORD=$(cat /root/.my.cnf | grep password | cut -d' ' -f1 | cut -d'=' -f2)
 
 
 function restore_cpanel_database
@@ -37,23 +37,23 @@ echo " "
 echo -e $GREEN"Restoring All Databases"$RESET
 echo " "
 
-DATABASE_CREATE_RESTORE=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' |                                                                                                                                                              sed -r '/^\s*$/d' | grep .create$)
+DATABASE_CREATE_RESTORE=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' | sed -r '/^\s*$/d' | grep .create$)
                         for db in ${DATABASE_CREATE_RESTORE}; do
-                        DBCR=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $                                                                                                                                                             9}' | sed -r '/^\s*$/d' | grep .create$ | wc -l)
+                        DBCR=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' | sed -r '/^\s*$/d' | grep .create$ | wc -l)
                                 for ((x=1; x<=$DBCR; x++)); do
 
-                                        RESULT=$(mysql -u root --password=$ROOT_                                                                                                                                                             PASSWORD -e "SHOW DATABASES" | grep ${db%.*})
+                                        RESULT=$(mysql -u root --password=$ROOT_PASSWORD -e "SHOW DATABASES" | grep ${db%.*})
                                         if [ "$RESULT" == "${db%.*}" ]; then
                                                 echo " "
-                                                echo -e $RED"Database Already Ex                                                                                                                                                             ist. Restore of database ${db%.*}.sql Failed"$RESET
+                                                echo -e $RED"Database Already Exist. Restore of database ${db%.*}.sql Failed"$RESET
                                                 echo " "
                                         else
                                                 echo " "
-                                                echo -e $YELLOW"Database does no                                                                                                                                                             t exist"$RESET
+                                                echo -e $YELLOW"Database does not exist"$RESET
                                                 echo " "
-                                                /usr/bin/mysql -u root --passwor                                                                                                                                                             d=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db
-                                                /usr/bin/mysql -u root --passwor                                                                                                                                                             d=$ROOT_PASSWORD ${db%.*} < /home/${FILE_NAME}/mysql/${db%.*}.sql
-                                                echo -e $GREEN"Database Created                                                                                                                                                              ${db%.*}.sql"$RESET
+                                                /usr/bin/mysql -u root --password=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db
+                                                /usr/bin/mysql -u root --password=$ROOT_PASSWORD ${db%.*} < /home/${FILE_NAME}/mysql/${db%.*}.sql
+                                                echo -e $GREEN"Database Created ${db%.*}.sql"$RESET
                                                 echo " "
                                         fi
 
@@ -65,7 +65,7 @@ restore_cpanel_main_domain
 
 function restore_cpanel_main_domain
 {
-MAIN_DOMAIN=$(grep -ir "main_domain" /home/${FILE_NAME}/userdata/main | cut -d":                                                                                                                                                             " -f2 | tr -d " ")
+MAIN_DOMAIN=$(grep -ir "main_domain" /home/${FILE_NAME}/userdata/main | cut -d":" -f2 | tr -d " ")
 
 echo " "
 echo -e $GREEN"Restoring File for Main Domain $MAIN_DOMAIN"$RESET
@@ -81,15 +81,15 @@ SUB_DOMAINS_PATH=$(cat /home/${FILE_NAME}/sds2 | cut -d"=" -f2 | cut -d"/" -f2)
 
 
                         for db in ${SUB_DOMAINS_PATH}; do
-                        SDC=$(cat /home/${FILE_NAME}/sds2 | cut -d"=" -f2 | cut                                                                                                                                                              -d"/" -f2 | wc -l)
+                        SDC=$(cat /home/${FILE_NAME}/sds2 | cut -d"=" -f2 | cut -d"/" -f2 | wc -l)
                                 for ((x=1; x<=$SDC; x++)); do
-                                        echo "$db" >> /home/${FILE_NAME}/sds2_ex                                                                                                                                                             clude
+                                        echo "$db" >> /home/${FILE_NAME}/sds2_exclude
                                         x=$((x + 1))
                                         echo " "
                                 done
                         done
 
-rsync -r --exclude-from="/home/${FILE_NAME}/sds2_exclude" /home/${FILE_NAME}/hom                                                                                                                                                             edir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public
+rsync -r --exclude-from="/home/${FILE_NAME}/sds2_exclude" /home/${FILE_NAME}/homedir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public
 chown -R nginx:nginx /home/nginx/domains/$MAIN_DOMAIN/*
 chmod 2750 /home/nginx/domains/$MAIN_DOMAIN
 
@@ -121,7 +121,7 @@ server {
   # limit_conn limit_per_ip 16;
   # ssi  on;
 
-  access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k fl                                                                                                                                                             ush=5m;
+  access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k flush=5m;
   error_log /home/nginx/domains/demo.com/log/error.log;
 
   root /home/nginx/domains/demo.com/public;
@@ -149,7 +149,7 @@ server {
   include /usr/local/nginx/conf/vts_server.conf;
 }
 EOF
-sed -i "s/demo.com/$MAIN_DOMAIN/g" /usr/local/nginx/conf/conf.d/${MAIN_DOMAIN}.c                                                                                                                                                             onf
+sed -i "s/demo.com/$MAIN_DOMAIN/g" /usr/local/nginx/conf/conf.d/${MAIN_DOMAIN}.conf
 nprestart
 restore_cpanel_subdomain
 }
@@ -162,7 +162,7 @@ echo " "
 cp /home/${FILE_NAME}/sds /home/${FILE_NAME}/sds.bak
 cp /home/${FILE_NAME}/sds2 /home/${FILE_NAME}/sds2.bak
 sed -i 's/_/./g' /home/${FILE_NAME}/sds.bak
-sed -i 's/public_html/public@html/g; s/_/./g; s/=/ /g; s/public@html/public_html                                                                                                                                                             /g' /home/${FILE_NAME}/sds2.bak
+sed -i 's/public_html/public@html/g; s/_/./g; s/=/ /g; s/public@html/public_html/g' /home/${FILE_NAME}/sds2.bak
 
 LIC=$(cat /home/${FILE_NAME}/sds2.bak | wc -l)
         while read line; do
@@ -170,12 +170,12 @@ LIC=$(cat /home/${FILE_NAME}/sds2.bak | wc -l)
                                 DOMAIN_NAMES=$(echo $line | awk '{print $1}')
                                 DOMAIN_PATH=$(echo $line | awk '{print $2}')
                                 mkdir -p /home/nginx/domains/$DOMAIN_NAMES
-                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/backu                                                                                                                                                             p
+                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/backup
                                 mkdir -p /home/nginx/domains/$DOMAIN_NAMES/log
-                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/priva                                                                                                                                                             te
-                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/publi                                                                                                                                                             c
-                                chown -R nginx:nginx /home/nginx/domains/$DOMAIN                                                                                                                                                             _NAMES
-                                rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PAT                                                                                                                                                             H}/* /home/nginx/domains/$DOMAIN_NAMES/public
+                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/private
+                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/public
+                                chown -R nginx:nginx /home/nginx/domains/$DOMAIN_NAMES
+                                rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PATH}/* /home/nginx/domains/$DOMAIN_NAMES/public
 cat > /usr/local/nginx/conf/conf.d/$DOMAIN_NAMES.conf <<"EOF"
 # Centmin Mod Getting Started Guide
 # must read http://centminmod.com/getstarted.html
@@ -204,7 +204,7 @@ server {
   # limit_conn limit_per_ip 16;
   # ssi  on;
 
-  access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k fl                                                                                                                                                             ush=5m;
+  access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k flush=5m;
   error_log /home/nginx/domains/demo.com/log/error.log;
 
   root /home/nginx/domains/demo.com/public;
@@ -232,7 +232,7 @@ server {
   include /usr/local/nginx/conf/vts_server.conf;
 }
 EOF
-                                sed -i "s/demo.com/$DOMAIN_NAMES/g" /usr/local/n                                                                                                                                                             ginx/conf/conf.d/${DOMAIN_NAMES}.conf
+                                sed -i "s/demo.com/$DOMAIN_NAMES/g" /usr/local/nginx/conf/conf.d/${DOMAIN_NAMES}.conf
 
                                 x=$((x + 1))
                         done
@@ -263,8 +263,8 @@ case $1 in
                         sleep 2
 
                         FILE_NAME=${2%.*.*}
-                        sed '/localhost/!d' /home/${FILE_NAME}/mysql.sql >> /hom                                                                                                                                                             e/${FILE_NAME}/mysql_update.sql
-                        mysql -u root --password=$ROOT_PASSWORD mysql < /home/${                                                                                                                                                             FILE_NAME}/mysql_update.sql
+                        sed '/localhost/!d' /home/${FILE_NAME}/mysql.sql >> /home/${FILE_NAME}/mysql_update.sql
+                        mysql -u root --password=$ROOT_PASSWORD mysql < /home/${FILE_NAME}/mysql_update.sql
                         rm -rf /home/${FILE_NAME}/mysql_update.sql
 
                         restore_cpanel_database
