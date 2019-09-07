@@ -12,7 +12,7 @@ WHITE='\e[97m'
 BLINK='\e[5m'
 
 #set -e
-#set -x
+set -x
 
 echo " "
 echo -e "$GREEN*******************************************************************************$RESET"
@@ -51,9 +51,13 @@ DATABASE_CREATE_RESTORE=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' |
                                                 echo " "
                                                 echo -e $YELLOW"Database does not exist"$RESET
                                                 echo " "
-                                                /usr/bin/mysql -u root --password=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db
-                                                /usr/bin/mysql -u root --password=$ROOT_PASSWORD ${db%.*} < /home/${FILE_NAME}/mysql/${db%.*}.sql
-                                                echo -e $GREEN"Database Created ${db%.*}.sql"$RESET
+                                                echo -e $GREEN"Creating Database $db"$RESET
+                                                echo " "
+                                                /usr/bin/mysql -u root --password=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db & spinner
+                                                echo " "
+                                                echo -e $GREEN"Restoring Database ${db%.*}.sql"$RESET
+                                                echo " "
+                                                /usr/bin/mysql -u root --password=$ROOT_PASSWORD ${db%.*} < /home/${FILE_NAME}/mysql/${db%.*}.sql & spinner
                                                 echo " "
                                         fi
 
@@ -83,20 +87,17 @@ SUB_DOMAINS_PATH=$(cat /home/${FILE_NAME}/sds2 | cut -d"=" -f2 | cut -d"/" -f2)
                         for db in ${SUB_DOMAINS_PATH}; do
                         SDC=$(cat /home/${FILE_NAME}/sds2 | cut -d"=" -f2 | cut -d"/" -f2 | wc -l)
                                 for ((x=1; x<=$SDC; x++)); do
-                                        echo "$db" >> /home/${FILE_NAME}/sds2_exclude
+                                        echo "$db" >> /home/${FILE_NAME}/sds2_exclude 2>&1
                                         x=$((x + 1))
-                                        echo " "
                                 done
                         done
-
-rsync -r --exclude-from="/home/${FILE_NAME}/sds2_exclude" /home/${FILE_NAME}/homedir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public
-chown -R nginx:nginx /home/nginx/domains/$MAIN_DOMAIN/*
+rsync -r --exclude-from="/home/${FILE_NAME}/sds2_exclude" /home/${FILE_NAME}/homedir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public 2>/dev/null & spinner
+chown -R nginx:nginx /home/nginx/domains/$MAIN_DOMAIN/
 chmod 2750 /home/nginx/domains/$MAIN_DOMAIN
 
 cat > /usr/local/nginx/conf/conf.d/${MAIN_DOMAIN}.conf <<"EOF"
 # Centmin Mod Getting Started Guide
 # must read http://centminmod.com/getstarted.html
-
 # redirect from non-www to www
 # uncomment, save file and restart Nginx to enable
 # if unsure use return 302 before using return 301
@@ -105,43 +106,30 @@ cat > /usr/local/nginx/conf/conf.d/${MAIN_DOMAIN}.conf <<"EOF"
 #            server_name demo.com;
 #            return 301 $scheme://www.demo.com$request_uri;
 #       }
-
 server {
   server_name demo.com www.demo.com;
-
 # ngx_pagespeed & ngx_pagespeed handler
 #include /usr/local/nginx/conf/pagespeed.conf;
 #include /usr/local/nginx/conf/pagespeedhandler.conf;
 #include /usr/local/nginx/conf/pagespeedstatslog.conf;
-
   #add_header X-Frame-Options SAMEORIGIN;
   #add_header X-Xss-Protection "1; mode=block" always;
   #add_header X-Content-Type-Options "nosniff" always;
-
   # limit_conn limit_per_ip 16;
   # ssi  on;
-
   access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k flush=5m;
   error_log /home/nginx/domains/demo.com/log/error.log;
-
   root /home/nginx/domains/demo.com/public;
-
   location / {
-
 # block common exploits, sql injections etc
 #include /usr/local/nginx/conf/block.conf;
-
   # Enables directory listings when index file not found
   #autoindex  on;
-
   # Shows file listing times as local time
   #autoindex_localtime on;
-
   # Wordpress Permalinks example
   #try_files $uri $uri/ /index.php?q=$uri&$args;
-
   }
-
   include /usr/local/nginx/conf/staticfiles.conf;
   include /usr/local/nginx/conf/php.conf;
   #include /usr/local/nginx/conf/drop.conf;
@@ -149,19 +137,17 @@ server {
   include /usr/local/nginx/conf/vts_server.conf;
 }
 EOF
+
 sed -i "s/demo.com/$MAIN_DOMAIN/g" /usr/local/nginx/conf/conf.d/${MAIN_DOMAIN}.conf
-nprestart
 restore_cpanel_subdomain
 }
 
 function restore_cpanel_subdomain
 {
 echo " "
-echo -e $GREEN"Restoring Subdomains If Exist"$RESET
+echo -e $GREEN"Restoring Addon or Subdomains If Exist"$RESET
 echo " "
-cp /home/${FILE_NAME}/sds /home/${FILE_NAME}/sds.bak
 cp /home/${FILE_NAME}/sds2 /home/${FILE_NAME}/sds2.bak
-sed -i 's/_/./g' /home/${FILE_NAME}/sds.bak
 sed -i 's/public_html/public@html/g; s/_/./g; s/=/ /g; s/public@html/public_html/g' /home/${FILE_NAME}/sds2.bak
 
 LIC=$(cat /home/${FILE_NAME}/sds2.bak | wc -l)
@@ -169,17 +155,22 @@ LIC=$(cat /home/${FILE_NAME}/sds2.bak | wc -l)
                         for ((x=1; x<=$LIC; x++)); do
                                 DOMAIN_NAMES=$(echo $line | awk '{print $1}')
                                 DOMAIN_PATH=$(echo $line | awk '{print $2}')
-                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES
-                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/backup
-                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/log
-                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/private
-                                mkdir -p /home/nginx/domains/$DOMAIN_NAMES/public
-                                chown -R nginx:nginx /home/nginx/domains/$DOMAIN_NAMES
-                                rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PATH}/* /home/nginx/domains/$DOMAIN_NAMES/public
-cat > /usr/local/nginx/conf/conf.d/$DOMAIN_NAMES.conf <<"EOF"
+                                ADDONS_DOMAIN=$(grep $DOMAIN_NAMES /home/${FILE_NAME}/addons | cut -d"=" -f1)
+                                if [ -n "$ADDONS_DOMAIN" ]; then
+                                        echo " "
+                                        echo -e $GREEN"Restoring Addon Domain $ADDONS_DOMAIN"$RESET
+                                        echo " "
+                                        mkdir -p /home/nginx/domains/$ADDONS_DOMAIN
+                                        mkdir -p /home/nginx/domains/$ADDONS_DOMAIN/backup
+                                        mkdir -p /home/nginx/domains/$ADDONS_DOMAIN/log
+                                        mkdir -p /home/nginx/domains/$ADDONS_DOMAIN/private
+                                        mkdir -p /home/nginx/domains/$ADDONS_DOMAIN/public
+                                        chown -R nginx:nginx /home/nginx/domains/$ADDONS_DOMAIN
+                                        rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PATH}/* /home/nginx/domains/$ADDONS_DOMAIN/public & spinner
+
+cat > /usr/local/nginx/conf/conf.d/$ADDONS_DOMAIN.conf <<"EOF"
 # Centmin Mod Getting Started Guide
 # must read http://centminmod.com/getstarted.html
-
 # redirect from non-www to www
 # uncomment, save file and restart Nginx to enable
 # if unsure use return 302 before using return 301
@@ -188,43 +179,30 @@ cat > /usr/local/nginx/conf/conf.d/$DOMAIN_NAMES.conf <<"EOF"
 #            server_name demo.com;
 #            return 301 $scheme://www.demo.com$request_uri;
 #       }
-
 server {
   server_name demo.com www.demo.com;
-
 # ngx_pagespeed & ngx_pagespeed handler
 #include /usr/local/nginx/conf/pagespeed.conf;
 #include /usr/local/nginx/conf/pagespeedhandler.conf;
 #include /usr/local/nginx/conf/pagespeedstatslog.conf;
-
   #add_header X-Frame-Options SAMEORIGIN;
   #add_header X-Xss-Protection "1; mode=block" always;
   #add_header X-Content-Type-Options "nosniff" always;
-
   # limit_conn limit_per_ip 16;
   # ssi  on;
-
   access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k flush=5m;
   error_log /home/nginx/domains/demo.com/log/error.log;
-
   root /home/nginx/domains/demo.com/public;
-
   location / {
-
 # block common exploits, sql injections etc
 #include /usr/local/nginx/conf/block.conf;
-
   # Enables directory listings when index file not found
   #autoindex  on;
-
   # Shows file listing times as local time
   #autoindex_localtime on;
-
   # Wordpress Permalinks example
   #try_files $uri $uri/ /index.php?q=$uri&$args;
-
   }
-
   include /usr/local/nginx/conf/staticfiles.conf;
   include /usr/local/nginx/conf/php.conf;
   #include /usr/local/nginx/conf/drop.conf;
@@ -232,13 +210,88 @@ server {
   include /usr/local/nginx/conf/vts_server.conf;
 }
 EOF
-                                sed -i "s/demo.com/$DOMAIN_NAMES/g" /usr/local/nginx/conf/conf.d/${DOMAIN_NAMES}.conf
+                                        sed -i "s/demo.com/$ADDONS_DOMAIN/g" /usr/local/nginx/conf/conf.d/${ADDONS_DOMAIN}.conf
 
-                                x=$((x + 1))
+                                else
+                                        echo " "
+                                        echo -e $GREEN"Restoring Sub Domain $DOMAIN_NAMES"$RESET
+                                        echo " "
+                                        mkdir -p /home/nginx/domains/$DOMAIN_NAMES
+                                        mkdir -p /home/nginx/domains/$DOMAIN_NAMES/backup
+                                        mkdir -p /home/nginx/domains/$DOMAIN_NAMES/log
+                                        mkdir -p /home/nginx/domains/$DOMAIN_NAMES/private
+                                        mkdir -p /home/nginx/domains/$DOMAIN_NAMES/public
+                                        chown -R nginx:nginx /home/nginx/domains/$DOMAIN_NAMES
+                                        rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PATH}/* /home/nginx/domains/$DOMAIN_NAMES/public & spinner
+
+
+cat > /usr/local/nginx/conf/conf.d/$DOMAIN_NAMES.conf <<"EOF"
+# Centmin Mod Getting Started Guide
+# must read http://centminmod.com/getstarted.html
+# redirect from non-www to www
+# uncomment, save file and restart Nginx to enable
+# if unsure use return 302 before using return 301
+#server {
+#            listen   80;
+#            server_name demo.com;
+#            return 301 $scheme://www.demo.com$request_uri;
+#       }
+server {
+  server_name demo.com www.demo.com;
+# ngx_pagespeed & ngx_pagespeed handler
+#include /usr/local/nginx/conf/pagespeed.conf;
+#include /usr/local/nginx/conf/pagespeedhandler.conf;
+#include /usr/local/nginx/conf/pagespeedstatslog.conf;
+  #add_header X-Frame-Options SAMEORIGIN;
+  #add_header X-Xss-Protection "1; mode=block" always;
+  #add_header X-Content-Type-Options "nosniff" always;
+  # limit_conn limit_per_ip 16;
+  # ssi  on;
+  access_log /home/nginx/domains/demo.com/log/access.log combined buffer=256k flush=5m;
+  error_log /home/nginx/domains/demo.com/log/error.log;
+  root /home/nginx/domains/demo.com/public;
+  location / {
+# block common exploits, sql injections etc
+#include /usr/local/nginx/conf/block.conf;
+  # Enables directory listings when index file not found
+  #autoindex  on;
+  # Shows file listing times as local time
+  #autoindex_localtime on;
+  # Wordpress Permalinks example
+  #try_files $uri $uri/ /index.php?q=$uri&$args;
+  }
+  include /usr/local/nginx/conf/staticfiles.conf;
+  include /usr/local/nginx/conf/php.conf;
+  #include /usr/local/nginx/conf/drop.conf;
+  #include /usr/local/nginx/conf/errorpage.conf;
+  include /usr/local/nginx/conf/vts_server.conf;
+}
+EOF
+
+                                sed -i "s/demo.com/$DOMAIN_NAMES/g" /usr/local/nginx/conf/conf.d/${DOMAIN_NAMES}.conf
+                                fi
+                                        x=$((x + 1))
                         done
         done < /home/${FILE_NAME}/sds2.bak
 nprestart
 }
+
+function spinner
+{
+
+pid=$!
+delay=0.75
+spinstr='|/-\'
+while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+        temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+        done
+        printf "    \b\b\b\b"
+}
+
 
 case $1 in
         -c )
@@ -250,15 +303,9 @@ case $1 in
                         echo " "
                         echo -e $GREEN"Extracting Backup File $2"$RESET
                         echo " "
+                        tar -zxf $2 -C /home/ 2>/dev/null & spinner
 
-                        tar -zxvf $2 -C /home/ 2>&1 |
 
-                        while read extraction; do
-                                ext=$((ext+1))
-                                echo -en "wait... $ext files extracted\r"
-                        done
-
-                        echo " "
                         echo " "
                         echo -e $GREEN"Restoring Mysql User and Password"$RESET
                         sleep 2
