@@ -12,7 +12,7 @@ WHITE='\e[97m'
 BLINK='\e[5m'
 
 #set -e
-set -x
+#set -x
 
 echo " "
 echo -e "$GREEN*******************************************************************************$RESET"
@@ -152,13 +152,12 @@ sed -i 's/public_html/public@html/g; s/_/./g; s/=/ /g; s/public@html/public_html
 
 LIC=$(cat /home/${FILE_NAME}/sds2.bak | wc -l)
         while read line; do
-                        for ((x=1; x<=$LIC; x++)); do
                                 DOMAIN_NAMES=$(echo $line | awk '{print $1}')
                                 DOMAIN_PATH=$(echo $line | awk '{print $2}')
                                 ADDONS_DOMAIN=$(grep $DOMAIN_NAMES /home/${FILE_NAME}/addons | cut -d"=" -f1)
                                 if [ -n "$ADDONS_DOMAIN" ]; then
                                         echo " "
-                                        echo -e $GREEN"Restoring Addon Domain $ADDONS_DOMAIN"$RESET
+                                        echo -e $YELLOW"Restoring Addon Domain $ADDONS_DOMAIN"$RESET
                                         echo " "
                                         mkdir -p /home/nginx/domains/$ADDONS_DOMAIN
                                         mkdir -p /home/nginx/domains/$ADDONS_DOMAIN/backup
@@ -214,7 +213,7 @@ EOF
 
                                 else
                                         echo " "
-                                        echo -e $GREEN"Restoring Sub Domain $DOMAIN_NAMES"$RESET
+                                        echo -e $YELLOW"Restoring Sub Domain $DOMAIN_NAMES"$RESET
                                         echo " "
                                         mkdir -p /home/nginx/domains/$DOMAIN_NAMES
                                         mkdir -p /home/nginx/domains/$DOMAIN_NAMES/backup
@@ -270,10 +269,14 @@ EOF
 
                                 sed -i "s/demo.com/$DOMAIN_NAMES/g" /usr/local/nginx/conf/conf.d/${DOMAIN_NAMES}.conf
                                 fi
-                                        x=$((x + 1))
-                        done
         done < /home/${FILE_NAME}/sds2.bak
+
+rm -rf /home/${FILE_NAME}/sds2_exclude
+rm -rf /home/${FILE_NAME}/sds2_bak
+
 nprestart
+
+echo " "
 }
 
 function spinner
