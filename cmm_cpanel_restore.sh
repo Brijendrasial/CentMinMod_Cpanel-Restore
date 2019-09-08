@@ -27,6 +27,9 @@ echo -e "$GREEN*****************************************************************
 
 echo " "
 
+rm -rf /etc/centminmod/cmmdomainlogins
+
+mkdir -p /etc/centminmod/cmmdomainlogins
 
 ROOT_PASSWORD=$(cat /root/.my.cnf | grep password | cut -d' ' -f1 | cut -d'=' -f2)
 
@@ -139,6 +142,23 @@ server {
 EOF
 
 sed -i "s/demo.com/$MAIN_DOMAIN/g" /usr/local/nginx/conf/conf.d/${MAIN_DOMAIN}.conf
+
+read -p "$(echo -e $GREEN"Enter Username for ${MAIN_DOMAIN}:"$RESET) " USER_NAME
+
+RANDOM_PASS=$(pwgen 8 1)
+
+(echo $RANDOM_PASS;echo $RANDOM_PASS) | pure-pw useradd $USER_NAME -u nginx -g nginx -d /home/nginx/domains/${MAIN_DOMAIN}
+
+pure-pw mkdb
+
+cat >> /etc/centminmod/cmmdomainlogins/logins <<EOF
+=======================================
+${MAIN_DOMAIN} Login is
+USER: $USER_NAME
+PASS: $RANDOM_PASS
+=======================================
+EOF
+
 restore_cpanel_subdomain
 }
 
@@ -211,6 +231,23 @@ server {
 EOF
                                         sed -i "s/demo.com/$ADDONS_DOMAIN/g" /usr/local/nginx/conf/conf.d/${ADDONS_DOMAIN}.conf
 
+read -p "$(echo -e $GREEN"Enter Username for ${ADDONS_DOMAIN}:"$RESET) " USER_NAME </dev/tty
+
+RANDOM_PASS=$(pwgen 8 1)
+
+(echo $RANDOM_PASS;echo $RANDOM_PASS) | pure-pw useradd ${USER_NAME} -u nginx -g nginx -d /home/nginx/domains/${ADDONS_DOMAIN}
+
+pure-pw mkdb
+
+cat >> /etc/centminmod/cmmdomainlogins/logins <<EOF
+=======================================
+${ADDONS_DOMAIN} Login is
+USER: ${USER_NAME}
+PASS: ${RANDOM_PASS}
+=======================================
+EOF
+
+
                                 else
                                         echo " "
                                         echo -e $YELLOW"Restoring Sub Domain $DOMAIN_NAMES"$RESET
@@ -268,14 +305,38 @@ server {
 EOF
 
                                 sed -i "s/demo.com/$DOMAIN_NAMES/g" /usr/local/nginx/conf/conf.d/${DOMAIN_NAMES}.conf
+
+read -p "$(echo -e $GREEN"Enter Username for $DOMAIN_NAMES:"$RESET) " USER_NAME </dev/tty
+
+RANDOM_PASS=$(pwgen 8 1)
+
+(echo $RANDOM_PASS;echo $RANDOM_PASS) | pure-pw useradd $USER_NAME -u nginx -g nginx -d /home/nginx/domains/$DOMAIN_NAMES
+
+pure-pw mkdb
+
+cat >> /etc/centminmod/cmmdomainlogins/logins <<EOF
+=======================================
+$DOMAIN_NAMES Login is
+USER: $USER_NAME
+PASS: $RANDOM_PASS
+=======================================
+EOF
+
                                 fi
         done < /home/${FILE_NAME}/sds2.bak
 
 rm -rf /home/${FILE_NAME}/sds2_exclude
-rm -rf /home/${FILE_NAME}/sds2_bak
+rm -rf /home/${FILE_NAME}/sds2.bak
+
+echo " "
+echo " "
 
 nprestart
 
+echo " "
+echo " "
+cat /etc/centminmod/cmmdomainlogins/logins
+echo " "
 echo " "
 }
 
