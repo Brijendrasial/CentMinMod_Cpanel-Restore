@@ -12,7 +12,7 @@ WHITE='\e[97m'
 BLINK='\e[5m'
 
 #set -e
-#set -x
+set -x
 
 echo " "
 echo -e "$GREEN*******************************************************************************$RESET"
@@ -41,31 +41,28 @@ echo -e $GREEN"Restoring All Databases"$RESET
 echo " "
 
 DATABASE_CREATE_RESTORE=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' | sed -r '/^\s*$/d' | grep .create$)
-                        for db in ${DATABASE_CREATE_RESTORE}; do
-                        DBCR=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' | sed -r '/^\s*$/d' | grep .create$ | wc -l)
-                                for ((x=1; x<=$DBCR; x++)); do
+                        for db in $DATABASE_CREATE_RESTORE; do
 
-                                        RESULT=$(mysql -u root --password=$ROOT_PASSWORD -e "SHOW DATABASES" | grep ${db%.*})
-                                        if [ "$RESULT" == "${db%.*}" ]; then
-                                                echo " "
-                                                echo -e $RED"Database Already Exist. Restore of database ${db%.*}.sql Failed"$RESET
-                                                echo " "
-                                        else
-                                                echo " "
-                                                echo -e $YELLOW"Database does not exist"$RESET
-                                                echo " "
-                                                echo -e $GREEN"Creating Database $db"$RESET
-                                                echo " "
-                                                /usr/bin/mysql -u root --password=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db & spinner
-                                                echo " "
-                                                echo -e $GREEN"Restoring Database ${db%.*}.sql"$RESET
-                                                echo " "
-                                                /usr/bin/mysql -u root --password=$ROOT_PASSWORD ${db%.*} < /home/${FILE_NAME}/mysql/${db%.*}.sql & spinner
-                                                echo " "
-                                        fi
+                                                RESULT=$(mysql -u root --password=$ROOT_PASSWORD -e "SHOW DATABASES" | grep ${db%.*})
 
-                                                x=$((x + 1))
-                                done
+                                                if [ "$RESULT" == "${db%.*}" ]; then
+                                                        echo " "
+                                                        echo -e $RED"Database Already Exist. Restore of database ${db%.*}.sql Failed"$RESET
+                                                        echo " "
+                                                else
+                                                        echo " "
+                                                        echo -e $YELLOW"Database does not exist"$RESET
+                                                        echo " "
+                                                        echo -e $GREEN"Creating Database $db"$RESET
+                                                        echo " "
+                                                        /usr/bin/mysql -u root --password=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db & spinner
+                                                        echo " "
+                                                        echo -e $GREEN"Restoring Database ${db%.*}.sql"$RESET
+                                                        echo " "
+                                                        /usr/bin/mysql -u root --password=$ROOT_PASSWORD ${db%.*} < /home/${FILE_NAME}/mysql/${db%.*}.sql & spinner
+                                                        echo " "
+                                                fi
+
                         done
 restore_cpanel_main_domain
 }
