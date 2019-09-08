@@ -38,9 +38,9 @@ function restore_cpanel_database
 {
 echo " "
 echo -e $GREEN"Restoring All Databases"$RESET
-echo " "
 
 DATABASE_CREATE_RESTORE=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' | sed -r '/^\s*$/d' | grep .create$)
+
                         for db in $DATABASE_CREATE_RESTORE; do
 
                                                 RESULT=$(mysql -u root --password=$ROOT_PASSWORD -e "SHOW DATABASES" | grep ${db%.*})
@@ -51,19 +51,14 @@ DATABASE_CREATE_RESTORE=$(ls -lht /home/${FILE_NAME}/mysql/ | awk '{print $9}' |
                                                         echo " "
                                                 else
                                                         echo " "
-                                                        echo -e $YELLOW"Database does not exist"$RESET
+                                                        /usr/bin/mysql -u root --password=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db & loader "Creating Database $db"
                                                         echo " "
-                                                        echo -e $GREEN"Creating Database $db"$RESET
-                                                        echo " "
-                                                        /usr/bin/mysql -u root --password=$ROOT_PASSWORD < /home/${FILE_NAME}/mysql/$db & spinner
-                                                        echo " "
-                                                        echo -e $GREEN"Restoring Database ${db%.*}.sql"$RESET
-                                                        echo " "
-                                                        /usr/bin/mysql -u root --password=$ROOT_PASSWORD ${db%.*} < /home/${FILE_NAME}/mysql/${db%.*}.sql & spinner
+                                                        /usr/bin/mysql -u root --password=$ROOT_PASSWORD ${db%.*} < /home/${FILE_NAME}/mysql/${db%.*}.sql & loader "Restoring Database ${db%.*}.sql"
                                                         echo " "
                                                 fi
 
                         done
+
 restore_cpanel_main_domain
 }
 
@@ -91,7 +86,7 @@ SUB_DOMAINS_PATH=$(cat /home/${FILE_NAME}/sds2 | cut -d"=" -f2 | cut -d"/" -f2)
                                         x=$((x + 1))
                                 done
                         done
-rsync -r --exclude-from="/home/${FILE_NAME}/sds2_exclude" /home/${FILE_NAME}/homedir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public 2>/dev/null & spinner
+rsync -r --exclude-from="/home/${FILE_NAME}/sds2_exclude" /home/${FILE_NAME}/homedir/public_html/* /home/nginx/domains/$MAIN_DOMAIN/public 2>/dev/null & loader "Restoring Files for $MAIN_DOMAIN"
 chown -R nginx:nginx /home/nginx/domains/$MAIN_DOMAIN/
 chmod 2750 /home/nginx/domains/$MAIN_DOMAIN
 
@@ -140,6 +135,8 @@ EOF
 
 sed -i "s/demo.com/$MAIN_DOMAIN/g" /usr/local/nginx/conf/conf.d/${MAIN_DOMAIN}.conf
 
+echo " "
+
 read -p "$(echo -e $GREEN"Enter Username for ${MAIN_DOMAIN}:"$RESET) " USER_NAME
 
 RANDOM_PASS=$(pwgen 8 1)
@@ -174,15 +171,13 @@ LIC=$(cat /home/${FILE_NAME}/sds2.bak | wc -l)
                                 ADDONS_DOMAIN=$(grep $DOMAIN_NAMES /home/${FILE_NAME}/addons | cut -d"=" -f1)
                                 if [ -n "$ADDONS_DOMAIN" ]; then
                                         echo " "
-                                        echo -e $YELLOW"Restoring Addon Domain $ADDONS_DOMAIN"$RESET
-                                        echo " "
                                         mkdir -p /home/nginx/domains/$ADDONS_DOMAIN
                                         mkdir -p /home/nginx/domains/$ADDONS_DOMAIN/backup
                                         mkdir -p /home/nginx/domains/$ADDONS_DOMAIN/log
                                         mkdir -p /home/nginx/domains/$ADDONS_DOMAIN/private
                                         mkdir -p /home/nginx/domains/$ADDONS_DOMAIN/public
                                         chown -R nginx:nginx /home/nginx/domains/$ADDONS_DOMAIN
-                                        rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PATH}/* /home/nginx/domains/$ADDONS_DOMAIN/public & spinner
+                                        rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PATH}/* /home/nginx/domains/$ADDONS_DOMAIN/public & loader "Restoring Addon Domain $ADDONS_DOMAIN"
 
 cat > /usr/local/nginx/conf/conf.d/$ADDONS_DOMAIN.conf <<"EOF"
 # Centmin Mod Getting Started Guide
@@ -228,6 +223,8 @@ server {
 EOF
                                         sed -i "s/demo.com/$ADDONS_DOMAIN/g" /usr/local/nginx/conf/conf.d/${ADDONS_DOMAIN}.conf
 
+echo " "
+
 read -p "$(echo -e $GREEN"Enter Username for ${ADDONS_DOMAIN}:"$RESET) " USER_NAME </dev/tty
 
 RANDOM_PASS=$(pwgen 8 1)
@@ -247,15 +244,13 @@ EOF
 
                                 else
                                         echo " "
-                                        echo -e $YELLOW"Restoring Sub Domain $DOMAIN_NAMES"$RESET
-                                        echo " "
                                         mkdir -p /home/nginx/domains/$DOMAIN_NAMES
                                         mkdir -p /home/nginx/domains/$DOMAIN_NAMES/backup
                                         mkdir -p /home/nginx/domains/$DOMAIN_NAMES/log
                                         mkdir -p /home/nginx/domains/$DOMAIN_NAMES/private
                                         mkdir -p /home/nginx/domains/$DOMAIN_NAMES/public
                                         chown -R nginx:nginx /home/nginx/domains/$DOMAIN_NAMES
-                                        rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PATH}/* /home/nginx/domains/$DOMAIN_NAMES/public & spinner
+                                        rsync -r /home/${FILE_NAME}/homedir/${DOMAIN_PATH}/* /home/nginx/domains/$DOMAIN_NAMES/public & loader "Restoring Sub Domain $DOMAIN_NAMES"
 
 
 cat > /usr/local/nginx/conf/conf.d/$DOMAIN_NAMES.conf <<"EOF"
@@ -303,6 +298,8 @@ EOF
 
                                 sed -i "s/demo.com/$DOMAIN_NAMES/g" /usr/local/nginx/conf/conf.d/${DOMAIN_NAMES}.conf
 
+echo " "
+
 read -p "$(echo -e $GREEN"Enter Username for $DOMAIN_NAMES:"$RESET) " USER_NAME </dev/tty
 
 RANDOM_PASS=$(pwgen 8 1)
@@ -337,22 +334,27 @@ echo " "
 echo " "
 }
 
-function spinner
+function loader
 {
+mypid=$!
+loadingText=$1
 
-pid=$!
-delay=0.75
-spinstr='|/-\'
-while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
-        temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
-        spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-        printf "\b\b\b\b\b\b"
-        done
-        printf "    \b\b\b\b"
+echo -ne "$loadingText\r"
+
+while kill -0 $mypid 2>/dev/null; do
+    echo -ne $YELLOW"$loadingText.\r"$RESET
+    sleep 0.5
+    echo -ne $YELLOW"$loadingText..\r"$RESET
+    sleep 0.5
+    echo -ne $YELLOW"$loadingText...\r"$RESET
+    sleep 0.5
+    echo -ne "\r\033[K"
+    echo -ne $YELLOW"$loadingText\r"$RESET
+    sleep 0.5
+done
+
+echo -e $BLINK"$loadingText...Finished"$RESET
 }
-
 
 case $1 in
         -c )
@@ -362,10 +364,7 @@ case $1 in
                         read -n 1 -s -r -p "Press any key to continue"
                         echo " "
                         echo " "
-                        echo -e $GREEN"Extracting Backup File $2"$RESET
-                        echo " "
-                        tar -zxf $2 -C /home/ 2>/dev/null & spinner
-
+                        tar -zxf $2 -C /home/ 2>/dev/null & loader "Extracting Backup File $2"
 
                         echo " "
                         echo -e $GREEN"Restoring Mysql User and Password"$RESET
@@ -379,4 +378,5 @@ case $1 in
                         restore_cpanel_database
 
         ;;
+
 esac
